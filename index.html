@@ -2,235 +2,84 @@
 <html>
 <head>
     <title>Tetris</title>
-    <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: #f0f0f0;
-            font-family: Arial, sans-serif;
-        }
-        #game-container {
-            position: relative;
-            margin-top: 20px;
-        }
-        canvas {
-            border: 2px solid #333;
-            background-color: #000;
-        }
-        #score {
-            position: absolute;
-            top: 10px;
-            right: -100px;
-            color: #333;
-            font-size: 20px;
-        }
-        #controls {
-            margin-top: 20px;
-            text-align: center;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <div id="game-container">
-        <canvas id="tetris" width="240" height="400"></canvas>
-        <div id="score">Score: 0</div>
+    <div class="game-wrapper">
+        <div class="game-header">
+            <h1>TETRIS</h1>
+        </div>
+        
+        <div class="game-container">
+            <div class="stats-container">
+                <div class="stat-box">
+                    <i class="fas fa-star"></i>
+                    <div class="stat-label">Punruación</div>
+                    <div id="score">0</div>
+                </div>
+                <div class="stat-box">
+                    <i class="fas fa-layer-group"></i>
+                    <div class="stat-label">Nivel</div>
+                    <div id="level">1</div>
+                </div>
+                <div class="stat-box">
+                    <i class="fas fa-bars"></i>
+                    <div class="stat-label">Filas Completadas</div>
+                    <div id="lines">0</div>
+                </div>
+            </div>
+            
+            <canvas id="tetris" width="240" height="400"></canvas>
+            
+            <div class="controls-container">
+                <div class="controls-box">
+                    <h3>Controles</h3>
+                    <div class="control-item">
+                        <span class="key">←→</span>
+                        <span>Mover</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="key">↑</span>
+                        <span>Rotar</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="key">↓</span>
+                        <span>Dejar caer</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="key">Spacio</span>
+                        <span>Caida instantanea</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="key">P</span>
+                        <span>Pausa</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div id="controls">
-        <p>Controles:</p>
-        <p>← → : Mover</p>
-        <p>↑ : Rotar</p>
-        <p>↓ : Bajar rápido</p>
+
+    <!-- Modal para Game Over -->
+    <div id="gameOverModal" class="modal">
+        <div class="modal-content">
+            <h2>Game Over</h2>
+            <div class="final-score">
+                <div class="score-label">Final Score</div>
+                <div id="finalScore">0</div>
+            </div>
+            <button id="restartButton" class="btn">Play Again</button>
+        </div>
     </div>
 
-    <script>
-        const canvas = document.getElementById('tetris');
-        const context = canvas.getContext('2d');
-        const scoreElement = document.getElementById('score');
-        const blockSize = 20;
-        const cols = canvas.width / blockSize;
-        const rows = canvas.height / blockSize;
+    <!-- Modal para Pausa -->
+    <div id="pauseModal" class="modal">
+        <div class="modal-content">
+            <h2>Paused</h2>
+            <button id="resumeButton" class="btn">Resume</button>
+        </div>
+    </div>
 
-        // Matriz del tablero
-        let board = Array(rows).fill().map(() => Array(cols).fill(0));
-        let score = 0;
-
-        // Piezas de Tetris
-        const pieces = [
-            [[1,1,1,1]], // I
-            [[1,1],[1,1]], // O
-            [[1,1,1],[0,1,0]], // T
-            [[1,1,1],[1,0,0]], // L
-            [[1,1,1],[0,0,1]], // J
-            [[1,1,0],[0,1,1]], // S
-            [[0,1,1],[1,1,0]]  // Z
-        ];
-
-        const colors = [
-            '#FF0D72', '#0DC2FF', '#0DFF72',
-            '#F538FF', '#FF8E0D', '#FFE138',
-            '#3877FF'
-        ];
-
-        let currentPiece = null;
-        let currentPieceX = 0;
-        let currentPieceY = 0;
-        let currentPieceIndex = 0;
-
-        function createPiece() {
-            currentPieceIndex = Math.floor(Math.random() * pieces.length);
-            currentPiece = pieces[currentPieceIndex];
-            currentPieceX = Math.floor(cols / 2) - Math.floor(currentPiece[0].length / 2);
-            currentPieceY = 0;
-        }
-
-        function collision() {
-            for(let y = 0; y < currentPiece.length; y++) {
-                for(let x = 0; x < currentPiece[y].length; x++) {
-                    if(currentPiece[y][x]) {
-                        const boardX = currentPieceX + x;
-                        const boardY = currentPieceY + y;
-                        
-                        if(boardX < 0 || boardX >= cols || 
-                           boardY >= rows ||
-                           (boardY >= 0 && board[boardY][boardX])) {
-                            return true;
-                        }
-                    }
-                }
-            }
-            return false;
-        }
-
-        function merge() {
-            for(let y = 0; y < currentPiece.length; y++) {
-                for(let x = 0; x < currentPiece[y].length; x++) {
-                    if(currentPiece[y][x]) {
-                        const boardY = currentPieceY + y;
-                        if(boardY >= 0) {
-                            board[boardY][currentPieceX + x] = currentPieceIndex + 1;
-                        }
-                    }
-                }
-            }
-        }
-
-        function rotate() {
-            const rotated = currentPiece[0].map((_, i) =>
-                currentPiece.map(row => row[i]).reverse()
-            );
-            const prevPiece = currentPiece;
-            currentPiece = rotated;
-            if(collision()) {
-                currentPiece = prevPiece;
-            }
-        }
-
-        function clearLines() {
-            let linesCleared = 0;
-            for(let y = rows - 1; y >= 0; y--) {
-                if(board[y].every(value => value > 0)) {
-                    board.splice(y, 1);
-                    board.unshift(Array(cols).fill(0));
-                    linesCleared++;
-                }
-            }
-            if(linesCleared > 0) {
-                score += linesCleared * 100;
-                scoreElement.textContent = `Score: ${score}`;
-            }
-        }
-
-        function draw() {
-            context.fillStyle = '#000';
-            context.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Dibujar el tablero
-            for(let y = 0; y < rows; y++) {
-                for(let x = 0; x < cols; x++) {
-                    if(board[y][x]) {
-                        context.fillStyle = colors[board[y][x] - 1];
-                        context.fillRect(x * blockSize, y * blockSize, blockSize - 1, blockSize - 1);
-                    }
-                }
-            }
-
-            // Dibujar la pieza actual
-            if(currentPiece) {
-                context.fillStyle = colors[currentPieceIndex];
-                for(let y = 0; y < currentPiece.length; y++) {
-                    for(let x = 0; x < currentPiece[y].length; x++) {
-                        if(currentPiece[y][x]) {
-                            context.fillRect(
-                                (currentPieceX + x) * blockSize,
-                                (currentPieceY + y) * blockSize,
-                                blockSize - 1,
-                                blockSize - 1
-                            );
-                        }
-                    }
-                }
-            }
-        }
-
-        function gameOver() {
-            if(board[0].some(value => value > 0)) {
-                alert('¡Game Over! Puntuación: ' + score);
-                board = Array(rows).fill().map(() => Array(cols).fill(0));
-                score = 0;
-                scoreElement.textContent = 'Score: 0';
-            }
-        }
-
-        let dropCounter = 0;
-        let lastTime = 0;
-        function update(time = 0) {
-            const deltaTime = time - lastTime;
-            lastTime = time;
-            dropCounter += deltaTime;
-
-            if(dropCounter > 1000) {
-                currentPieceY++;
-                if(collision()) {
-                    currentPieceY--;
-                    merge();
-                    clearLines();
-                    gameOver();
-                    createPiece();
-                }
-                dropCounter = 0;
-            }
-
-            draw();
-            requestAnimationFrame(update);
-        }
-
-        document.addEventListener('keydown', event => {
-            if(!currentPiece) return;
-
-            if(event.keyCode === 37) { // Izquierda
-                currentPieceX--;
-                if(collision()) currentPieceX++;
-            } else if(event.keyCode === 39) { // Derecha
-                currentPieceX++;
-                if(collision()) currentPieceX--;
-            } else if(event.keyCode === 40) { // Abajo
-                currentPieceY++;
-                if(collision()) {
-                    currentPieceY--;
-                    merge();
-                    clearLines();
-                    gameOver();
-                    createPiece();
-                }
-                dropCounter = 0;
-            } else if(event.keyCode === 38) { // Rotar
-                rotate();
-            }
-        });
-
-        createPiece();
-        update();
-    </script>
+    <script src="tetris.js"></script>
 </body>
 </html>
